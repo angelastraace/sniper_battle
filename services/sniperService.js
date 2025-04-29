@@ -1,6 +1,6 @@
+let socket
 let targets = []
 let subscribers = []
-let socket = null
 let isConnecting = false
 let reconnectAttempts = 0
 const MAX_RECONNECT_ATTEMPTS = 10
@@ -24,74 +24,47 @@ const subscribeToTargets = (callback) => {
 }
 
 // === WEBSOCKET SETUP ===
-const initializeWebSocket = () => {
-  // Only attempt to connect if we're in a browser and not already connecting
-  if (typeof window === "undefined" || isConnecting) {
-    return
+const connectWebSocket = () => {
+  socket = new WebSocket(process.env.NEXT_PUBLIC_WS_URL)
+
+  socket.onopen = () => {
+    console.log("🟢 Connected to sniper WebSocket server")
+    isConnecting = false
+    reconnectAttempts = 0
   }
 
-  isConnecting = true
-
-  try {
-    // Determine WebSocket URL - use environment variable if available
-    const wsPort = process.env.WS_STATS_PORT || "3001"
-    const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:"
-    const wsHost = window.location.hostname
-    const wsUrl = `${wsProtocol}//${wsHost}:${wsPort}`
-
-    console.log(`Connecting to WebSocket backend at: ${wsUrl}`)
-
-    socket = new WebSocket(wsUrl)
-
-    socket.onopen = () => {
-      console.log("🟢 WebSocket connected to sniper backend")
-      isConnecting = false
-      reconnectAttempts = 0
+  socket.onmessage = (event) => {
+    try {
+      const newTargets = JSON.parse(event.data)
+      updateTargets(newTargets)
+    } catch (error) {
+      console.error("❌ Failed to parse WebSocket message", error)
     }
+  }
 
-    socket.onmessage = (event) => {
-      try {
-        const newTargets = JSON.parse(event.data)
-        updateTargets(newTargets)
-      } catch (err) {
-        console.error("❌ Failed to parse WS message:", err)
-      }
-    }
-
-    socket.onerror = (err) => {
-      console.error("🔴 WebSocket error:", err)
-      isConnecting = false
-
-      // Attempt to reconnect
-      if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-        reconnectAttempts++
-        console.log(`Reconnect attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS} in ${RECONNECT_INTERVAL}ms`)
-        setTimeout(initializeWebSocket, RECONNECT_INTERVAL)
-      } else {
-        console.error("Maximum reconnection attempts reached. WebSocket connection failed.")
-      }
-    }
-
-    socket.onclose = () => {
-      console.warn("🔌 WebSocket disconnected")
-      isConnecting = false
-
-      // Attempt to reconnect
-      if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-        reconnectAttempts++
-        console.log(`Reconnect attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS} in ${RECONNECT_INTERVAL}ms`)
-        setTimeout(initializeWebSocket, RECONNECT_INTERVAL)
-      }
-    }
-  } catch (error) {
-    console.error("Failed to initialize WebSocket:", error)
+  socket.onerror = (error) => {
+    console.error("🔴 WebSocket error:", error.message)
     isConnecting = false
 
     // Attempt to reconnect
     if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
       reconnectAttempts++
       console.log(`Reconnect attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS} in ${RECONNECT_INTERVAL}ms`)
-      setTimeout(initializeWebSocket, RECONNECT_INTERVAL)
+      setTimeout(connectWebSocket, RECONNECT_INTERVAL)
+    } else {
+      console.error("Maximum reconnection attempts reached. WebSocket connection failed.")
+    }
+  }
+
+  socket.onclose = (event) => {
+    console.warn("🔌 WebSocket closed. Attempting to reconnect in 5s...")
+    isConnecting = false
+
+    // Attempt to reconnect
+    if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+      reconnectAttempts++
+      console.log(`Reconnect attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS} in ${RECONNECT_INTERVAL}ms`)
+      setTimeout(connectWebSocket, RECONNECT_INTERVAL)
     }
   }
 }
@@ -100,9 +73,9 @@ const initializeWebSocket = () => {
 if (typeof window !== "undefined") {
   // Wait for the DOM to be fully loaded
   if (document.readyState === "complete") {
-    initializeWebSocket()
+    connectWebSocket()
   } else {
-    window.addEventListener("load", initializeWebSocket)
+    window.addEventListener("load", connectWebSocket)
   }
 }
 
@@ -255,6 +228,9 @@ const sweepTarget = async (id) => {
     socket.addEventListener("message", messageHandler)
   })
 }
+
+// Start connection when imported
+// connectWebSocket();
 
 // Export sniperService API
 const sniperService = {
