@@ -1,6 +1,6 @@
 export const ETHEREUM_CONFIG = {
   // RPC endpoints
-  RPC_URL: process.env.ETHEREUM_RPC || "https://eth-mainnet.g.alchemy.com/v2/demo",
+  RPC_URL: process.env.NEXT_PUBLIC_ALCHEMY_RPC || "https://eth-mainnet.g.alchemy.com/v2/demo",
   BACKUP_RPC_URLS: [
     "https://eth-mainnet.public.blastapi.io",
     "https://ethereum.publicnode.com",

@@ -4,7 +4,7 @@ import { ethers } from "ethers"
 export async function GET() {
   try {
     // Use the environment variable for RPC URL, with a reliable mainnet fallback
-    const rpcUrl = process.env.ETHEREUM_RPC || "https://eth-mainnet.g.alchemy.com/v2/demo"
+    const rpcUrl = process.env.ETHEREUM_RPC || process.env.NEXT_PUBLIC_ALCHEMY_RPC
 
     // Create provider with mainnet
     const provider = new ethers.JsonRpcProvider(rpcUrl)

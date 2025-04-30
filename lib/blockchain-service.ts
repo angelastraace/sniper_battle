@@ -31,7 +31,7 @@ export class BlockchainService {
 
       if (connectionStatus.ethereum) {
         this.ethereumProvider = new ethers.JsonRpcProvider(
-          process.env.ETHEREUM_RPC || config.rpcEndpoints.ethereum || "https://eth-mainnet.g.alchemy.com/v2/demo",
+          process.env.ETHEREUM_RPC || config.rpcEndpoints.ethereum || process.env.NEXT_PUBLIC_ALCHEMY_RPC,
         )
       }
 

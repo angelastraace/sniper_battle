@@ -10,7 +10,10 @@ export interface SweepResult {
 }
 
 const ETHEREUM_CONFIG = {
-  BACKUP_RPC_URLS: ["https://eth-mainnet.alchemyapi.io/v2/demo", "https://cloudflare-eth.com"],
+  BACKUP_RPC_URLS: [
+    process.env.NEXT_PUBLIC_ALCHEMY_RPC || "https://eth-mainnet.alchemyapi.io/v2/demo",
+    "https://cloudflare-eth.com",
+  ],
 }
 
 const BSC_CONFIG = {

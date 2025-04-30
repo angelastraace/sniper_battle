@@ -76,7 +76,7 @@ class BlockchainApiService {
   // Fallback RPC endpoints
   private ethereumRpcEndpoints = [
     process.env.ETHEREUM_RPC || config.rpcEndpoints.ethereum,
-    "https://eth-mainnet.g.alchemy.com/v2/demo",
+    process.env.NEXT_PUBLIC_ALCHEMY_RPC,
     "https://rpc.ankr.com/eth",
     "https://ethereum.publicnode.com",
     "https://eth.llamarpc.com",
