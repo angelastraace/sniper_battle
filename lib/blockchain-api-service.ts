@@ -140,6 +140,7 @@ class BlockchainApiService {
         await connection.getSlot()
         this.solanaConnection = connection
         this.connectionStatus.solana = true
+        console.log(`🚀 Solana RPC connected: ${endpoint}`)
         console.log(`Connected to Solana via ${endpoint}`)
         break
       } catch (error) {
@@ -221,6 +222,7 @@ class BlockchainApiService {
           await connection.getSlot()
           this.solanaConnection = connection
           this.connectionStatus.solana = true
+          console.log(`🚀 Solana RPC connected: ${endpoint}`)
           console.log(`Reconnected to Solana via ${endpoint}`)
           // Restart monitoring for Solana
           this.startSolanaMonitoring()
@@ -393,6 +395,7 @@ class BlockchainApiService {
         if (latestSlot - i >= 0) {
           try {
             // Add maxSupportedTransactionVersion to getBlock options
+            console.log(`🧠 Fetching Solana block: ${latestSlot - i}`)
             const block = await this.solanaConnection.getBlock(latestSlot - i, {
               maxSupportedTransactionVersion: 0,
             })
@@ -454,6 +457,7 @@ class BlockchainApiService {
             // Process new blocks
             try {
               // Add maxSupportedTransactionVersion to getBlock options
+              console.log(`🧠 Fetching Solana block: ${currentSlot}`)
               const block = await this.solanaConnection.getBlock(currentSlot, {
                 maxSupportedTransactionVersion: 0,
               })
