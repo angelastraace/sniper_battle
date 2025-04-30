@@ -54,7 +54,7 @@ export default function WalletController({ chain }: WalletControllerProps) {
     setError(null)
 
     try {
-      // Get the appropriate RPC endpoint from config
+      // Get the appropriate RPC endpoint based on the chain
       const endpoint = chain === "ethereum" ? "/api/rpc/eth" : chain === "solana" ? "/api/rpc/sol" : "/api/rpc/bsc"
 
       // Create the appropriate RPC payload based on the chain
@@ -76,7 +76,10 @@ export default function WalletController({ chain }: WalletControllerProps) {
         }
       }
 
-      const response = await fetch(endpoint, {
+      // Make sure we have the full URL with origin for client-side requests
+      const fullUrl = typeof window !== "undefined" ? `${window.location.origin}${endpoint}` : endpoint
+
+      const response = await fetch(fullUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -99,7 +102,7 @@ export default function WalletController({ chain }: WalletControllerProps) {
         formattedBalance = (wei / 1e18).toFixed(4)
       } else if (chain === "solana") {
         // Format SOL balance (lamports to SOL)
-        formattedBalance = (data.result.value / 1e9).toFixed(4)
+        formattedBalance = (data.result?.value / 1e9).toFixed(4)
       }
 
       setBalance(formattedBalance)
@@ -112,6 +115,8 @@ export default function WalletController({ chain }: WalletControllerProps) {
   }
 
   const fetchTransactions = async (address: string) => {
+    if (!address) return
+
     setLoadingTx(true)
     setTxError(null)
 
@@ -131,7 +136,10 @@ export default function WalletController({ chain }: WalletControllerProps) {
         throw new Error("Unsupported chain for transaction fetching")
       }
 
-      const response = await fetch(endpoint, {
+      // Make sure we have the full URL with origin for client-side requests
+      const fullUrl = typeof window !== "undefined" ? `${window.location.origin}${endpoint}` : endpoint
+
+      const response = await fetch(fullUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -261,6 +269,11 @@ export default function WalletController({ chain }: WalletControllerProps) {
     return new Date(timestamp).toLocaleString()
   }
 
+  // Function to handle transfer button click
+  const handleTransfer = () => {
+    alert("Transfer functionality is not implemented yet")
+  }
+
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -372,7 +385,7 @@ export default function WalletController({ chain }: WalletControllerProps) {
               <Button variant="outline" size="sm" onClick={disconnectWallet}>
                 Disconnect
               </Button>
-              <Button variant="default" size="sm">
+              <Button variant="default" size="sm" onClick={handleTransfer}>
                 <ArrowRightLeft className="mr-2 h-4 w-4" />
                 Transfer
               </Button>

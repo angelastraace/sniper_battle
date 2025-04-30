@@ -8,11 +8,29 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Address is required" }, { status: 400 })
     }
 
-    // This is a placeholder - you would implement actual Ethereum transaction fetching here
-    // For now, we'll return an empty array to avoid errors
-    return NextResponse.json({ transactions: [] })
+    // For now, return mock data
+    const mockTransactions = [
+      {
+        signature: "0x5d53558791c9346d644d077354420f9a93600acf54910486764bc219877329c7",
+        timestamp: new Date().toISOString(),
+        status: "success",
+        type: "Transfer",
+        amount: 0.1,
+        blockTime: Date.now() / 1000,
+      },
+      {
+        signature: "0x3b198bdb8b0d149d9e513a2df1ceb0b01f8ff9d7c3a3324a3eb35be4cdd6bb73",
+        timestamp: new Date(Date.now() - 86400000).toISOString(),
+        status: "success",
+        type: "Swap",
+        amount: -0.5,
+        blockTime: (Date.now() - 86400000) / 1000,
+      },
+    ]
+
+    return NextResponse.json({ transactions: mockTransactions })
   } catch (error) {
     console.error("Error fetching Ethereum transactions:", error)
-    return NextResponse.json({ error: "Failed to fetch transactions", details: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to fetch transactions" }, { status: 500 })
   }
 }

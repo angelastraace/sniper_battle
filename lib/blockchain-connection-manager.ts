@@ -47,6 +47,29 @@ export interface ConnectionState {
   resetConnection: (network: NetworkType) => Promise<boolean>
 }
 
+// Helper function to ensure URL has proper protocol
+function ensureHttpProtocol(url: string): string {
+  if (!url) return ""
+
+  // If it's already a valid URL with protocol, return it
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    return url
+  }
+
+  // If it's a relative path starting with /, it's a local API endpoint
+  if (url.startsWith("/")) {
+    // For client-side, we need to use the full URL
+    if (typeof window !== "undefined") {
+      return `${window.location.origin}${url}`
+    }
+    // For server-side, we'll use the relative path (will be handled by Next.js)
+    return url
+  }
+
+  // Otherwise, assume it needs https:// prefix
+  return `https://${url}`
+}
+
 // Create a store with Zustand
 export const useConnectionStore = create<ConnectionState>()(
   persist(
@@ -57,9 +80,9 @@ export const useConnectionStore = create<ConnectionState>()(
         bsc: "disconnected",
       },
       endpoints: {
-        ethereum: process.env.ETHEREUM_RPC || config.rpcEndpoints.ethereum || "",
-        solana: process.env.SOLANA_RPC || config.rpcEndpoints.solana || "",
-        bsc: process.env.BSC_RPC || config.rpcEndpoints.bsc || "",
+        ethereum: process.env.ETHEREUM_RPC || config.rpcEndpoints?.ethereum || "",
+        solana: process.env.SOLANA_RPC || config.rpcEndpoints?.solana || "",
+        bsc: process.env.BSC_RPC || config.rpcEndpoints?.bsc || "",
       },
       lastChecked: {
         ethereum: 0,
@@ -120,8 +143,16 @@ export const useConnectionStore = create<ConnectionState>()(
 
         try {
           if (network === "ethereum") {
-            const provider = new ethers.JsonRpcProvider(get().endpoints.ethereum)
+            // For Ethereum, use our proxy endpoint
+            const endpoint =
+              typeof window !== "undefined"
+                ? `${window.location.origin}/api/rpc/eth`
+                : "https://eth-mainnet.g.alchemy.com/v2/demo" // Fallback for server-side
+
+            console.log(`Connecting to Ethereum RPC: ${endpoint}`)
+            const provider = new ethers.JsonRpcProvider(endpoint)
             await provider.getBlockNumber()
+
             const endTime = performance.now()
             set((state) => ({
               status: { ...state.status, ethereum: "connected" },
@@ -134,8 +165,21 @@ export const useConnectionStore = create<ConnectionState>()(
             }))
             return true
           } else if (network === "solana") {
-            const connection = new Connection(get().endpoints.solana, "confirmed")
+            // For Solana, use our proxy endpoint
+            const endpoint =
+              typeof window !== "undefined"
+                ? `${window.location.origin}/api/rpc/sol`
+                : "https://api.mainnet-beta.solana.com" // Fallback for server-side
+
+            console.log(`Connecting to Solana RPC: ${endpoint}`)
+            const connection = new Connection(endpoint, {
+              commitment: "confirmed",
+              disableRetryOnRateLimit: false,
+              confirmTransactionInitialTimeout: 60000,
+            })
+
             await connection.getSlot()
+
             const endTime = performance.now()
             set((state) => ({
               status: { ...state.status, solana: "connected" },
@@ -148,8 +192,16 @@ export const useConnectionStore = create<ConnectionState>()(
             }))
             return true
           } else if (network === "bsc") {
-            const provider = new ethers.JsonRpcProvider(get().endpoints.bsc)
+            // For BSC, use our proxy endpoint
+            const endpoint =
+              typeof window !== "undefined"
+                ? `${window.location.origin}/api/rpc/bsc`
+                : "https://bsc-dataseed.binance.org/" // Fallback for server-side
+
+            console.log(`Connecting to BSC RPC: ${endpoint}`)
+            const provider = new ethers.JsonRpcProvider(endpoint)
             await provider.getBlockNumber()
+
             const endTime = performance.now()
             set((state) => ({
               status: { ...state.status, bsc: "connected" },

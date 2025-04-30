@@ -59,10 +59,10 @@
     "vaul": "^0.9.6",
     "zod": "^3.24.1",
     "@emotion/is-prop-valid": "latest",
-    "immer": "latest",
-    "use-sync-external-store": "latest",
     "bufferutil": "latest",
     "utf-8-validate": "latest",
+    "immer": "latest",
+    "use-sync-external-store": "latest",
     "framer-motion": "latest",
     "@supabase/supabase-js": "latest",
     "ethers": "latest",
@@ -70,9 +70,9 @@
     "@solana/web3.js": "latest",
     "crypto": "latest",
     "bs58": "latest",
-    "zustand": "latest",
     "ws": "latest",
-    "alchemy-sdk": "latest"
+    "alchemy-sdk": "latest",
+    "zustand": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",
