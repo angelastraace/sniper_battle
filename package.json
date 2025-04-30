@@ -71,7 +71,8 @@
     "crypto": "latest",
     "bs58": "latest",
     "zustand": "latest",
-    "ws": "latest"
+    "ws": "latest",
+    "alchemy-sdk": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",

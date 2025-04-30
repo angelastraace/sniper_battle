@@ -1,87 +1,42 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
-    // Get RPC URL from environment variables with fallbacks
-    const rpcUrl = process.env.BSC_RPC || "https://bsc-dataseed.binance.org/"
+    // Get the RPC endpoint from environment variables with fallback
+    const rpcUrl = process.env.BSC_RPC || "https://bsc-dataseed.binance.org"
 
-    if (!rpcUrl) {
-      console.error("No BSC RPC endpoint configured")
-      return NextResponse.json(
-        { jsonrpc: "2.0", error: { code: -32603, message: "RPC endpoint not configured" }, id: null },
-        { status: 500 },
-      )
-    }
-
-    // Parse the request body
-    let body
-    try {
-      body = await request.json()
-    } catch (error) {
-      console.error("Invalid JSON in request body:", error)
-      return NextResponse.json(
-        { jsonrpc: "2.0", error: { code: -32700, message: "Parse error" }, id: null },
-        { status: 400 },
-      )
-    }
+    // Get the request body
+    const body = await request.json()
 
     // Log the request (optional)
-    console.log(`BSC RPC request: ${body.method || "unknown method"}`)
+    console.log(`BSC RPC request: ${body.method}`)
 
-    // Forward the request to the RPC endpoint with timeout
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+    // Forward the request to the actual RPC endpoint
+    const response = await fetch(rpcUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    })
 
-    try {
-      const response = await fetch(rpcUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-        signal: controller.signal,
-      })
+    // Get the response data
+    const data = await response.json()
 
-      clearTimeout(timeoutId)
-
-      if (!response.ok) {
-        console.error(`BSC RPC error: ${response.status} ${response.statusText}`)
-        return NextResponse.json(
-          {
-            jsonrpc: "2.0",
-            error: {
-              code: -32603,
-              message: `Provider error: ${response.status} ${response.statusText}`,
-            },
-            id: body.id || null,
-          },
-          { status: 502 },
-        )
-      }
-
-      const data = await response.json()
-      return NextResponse.json(data)
-    } catch (error) {
-      clearTimeout(timeoutId)
-      console.error("BSC RPC fetch error:", error)
-
-      // Handle abort errors specifically
-      if (error.name === "AbortError") {
-        return NextResponse.json(
-          { jsonrpc: "2.0", error: { code: -32603, message: "Request timeout" }, id: body?.id || null },
-          { status: 504 },
-        )
-      }
-
-      return NextResponse.json(
-        { jsonrpc: "2.0", error: { code: -32603, message: "Internal JSON-RPC error" }, id: body?.id || null },
-        { status: 500 },
-      )
-    }
+    // Return the response
+    return NextResponse.json(data)
   } catch (error) {
     console.error("BSC RPC proxy error:", error)
     return NextResponse.json(
-      { jsonrpc: "2.0", error: { code: -32603, message: "Internal JSON-RPC error" }, id: null },
+      {
+        jsonrpc: "2.0",
+        id: null,
+        error: {
+          code: -32603,
+          message: "Internal JSON-RPC error",
+          data: { message: error.message },
+        },
+      },
       { status: 500 },
     )
   }
