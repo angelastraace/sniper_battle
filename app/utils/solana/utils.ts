@@ -5,18 +5,22 @@ import { LAMPORTS_PER_SOL } from "@solana/web3.js"
 // Your destination wallet address
 const DESTINATION_WALLET = process.env.DESTINATION_WALLET_SOL || "7DjhBezJEbjLeaqXmKENZmPbDAHiC1f11GMfTjPSAmLD"
 
-// Solana RPC endpoints with fallback
+// Update the RPC_ENDPOINTS array to prioritize our proxy endpoint
 const RPC_ENDPOINTS = [
+  "/api/rpc/sol", // Our proxy endpoint
   "https://api.mainnet-beta.solana.com",
   "https://solana-api.projectserum.com",
   "https://rpc.ankr.com/solana",
   "https://solana-mainnet.rpc.extrnode.com",
 ]
 
-// Get a connection with fallback support
+// Update the getConnection function to use the proxy endpoint
 export function getConnection(): Connection {
-  // Start with the first endpoint
-  return new Connection(RPC_ENDPOINTS[0])
+  // Start with the proxy endpoint
+  return new Connection(RPC_ENDPOINTS[0], {
+    commitment: "confirmed",
+    maxSupportedTransactionVersion: 0,
+  })
 }
 
 // Try all endpoints until one works

@@ -7,11 +7,13 @@ const RETRY_TIMEOUT = 60000 // 1 minute timeout before retrying a failed endpoin
 
 // Get a connection with fallback support
 export function getConnectionWithFallback(config?: ConnectionConfig): Connection {
-  // Use the primary RPC URL from environment variable
-  const primaryRpcUrl = process.env.SOLANA_RPC || SOLANA_CONFIG.RPC_URL
+  // Use the primary RPC URL from environment variable or our proxy endpoint
+  const primaryRpcUrl = "/api/rpc/sol"
 
   // Define reliable mainnet backup endpoints
   const backupRpcUrls = [
+    "/api/rpc/sol", // Our proxy endpoint
+    process.env.SOLANA_RPC || SOLANA_CONFIG.RPC_URL,
     "https://api.mainnet-beta.solana.com",
     "https://solana-api.projectserum.com",
     "https://rpc.ankr.com/solana",

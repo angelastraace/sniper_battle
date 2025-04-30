@@ -1,79 +1,68 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 
-// Handle both GET and POST requests
-export async function GET(request: NextRequest) {
-  return handleRequest(request)
-}
-
-export async function POST(request: NextRequest) {
-  return handleRequest(request)
-}
-
-async function handleRequest(request: NextRequest) {
+export async function POST(request: Request) {
   try {
-    // Get RPC URL from environment variables with fallbacks
-    const rpcUrl = process.env.SOLANA_RPC || "https://api.mainnet-beta.solana.com"
+    // Get Helius API key from environment variables
+    const HELIUS_API_KEY = process.env.HELIUS_API_KEY || ""
 
-    // For GET requests, we need to extract query parameters
-    let body
-    if (request.method === "GET") {
-      const url = new URL(request.url)
-      const method = url.searchParams.get("method") || "getSlot"
-      const params = url.searchParams.get("params") ? JSON.parse(url.searchParams.get("params") || "[]") : []
+    // Use Helius if available, otherwise fall back to public RPC
+    const rpcUrl = HELIUS_API_KEY
+      ? `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`
+      : "https://api.mainnet-beta.solana.com"
 
-      body = {
-        jsonrpc: "2.0",
-        id: 1,
-        method,
-        params,
-      }
-    } else {
-      // For POST requests, parse the JSON body
-      try {
-        body = await request.json()
-      } catch (error) {
-        console.error("Invalid JSON in request body:", error)
-        return NextResponse.json(
-          { jsonrpc: "2.0", error: { code: -32700, message: "Parse error" }, id: null },
-          { status: 400 },
-        )
-      }
-    }
+    console.log(`Using Solana RPC: ${HELIUS_API_KEY ? "Helius (with API key)" : "Public endpoint"}`)
 
-    // Log the request (optional)
-    console.log(`Solana RPC request: ${body.method || "unknown method"}`)
+    // Parse the request body
+    const body = await request.json()
 
-    // Forward the request to the RPC endpoint
+    // Log the request method
+    console.log(`Solana RPC request: ${body.method}`)
+
+    // Forward the request to Solana RPC
     const response = await fetch(rpcUrl, {
-      method: "POST", // Always use POST for the actual RPC call
+      method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
     })
 
+    // Check if the response is successful
     if (!response.ok) {
       console.error(`Solana RPC error: ${response.status} ${response.statusText}`)
       return NextResponse.json(
         {
           jsonrpc: "2.0",
+          id: body.id || null,
           error: {
             code: -32603,
             message: `Provider error: ${response.status} ${response.statusText}`,
           },
-          id: body.id || null,
         },
         { status: 502 },
       )
     }
 
+    // Parse and return the response
     const data = await response.json()
     return NextResponse.json(data)
   } catch (error) {
     console.error("Solana RPC proxy error:", error)
     return NextResponse.json(
-      { jsonrpc: "2.0", error: { code: -32603, message: "Internal JSON-RPC error" }, id: null },
+      {
+        jsonrpc: "2.0",
+        id: null,
+        error: {
+          code: -32603,
+          message: error instanceof Error ? error.message : "Internal error",
+        },
+      },
       { status: 500 },
     )
   }
+}
+
+// Also handle GET requests for health checks
+export async function GET() {
+  return NextResponse.json({ status: "ok", service: "solana-rpc-proxy" })
 }

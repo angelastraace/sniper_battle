@@ -83,7 +83,7 @@ class BlockchainApiService {
   ]
 
   private solanaRpcEndpoints = [
-    "/api/rpc/solana", // Primary: Our proxied endpoint
+    "/api/rpc/sol", // Primary: Our proxied endpoint
     process.env.SOLANA_RPC || config.rpcEndpoints.solana,
     "https://api.mainnet-beta.solana.com",
     "https://solana-api.projectserum.com",

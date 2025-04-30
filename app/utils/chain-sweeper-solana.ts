@@ -10,10 +10,12 @@ export interface SweepResult {
   error?: string
 }
 
+// Update the SOLANA_CONFIG object to include our proxy endpoint
 const SOLANA_CONFIG = {
   BACKUP_RPC_URLS: [
-    "https://solana-mainnet.g.alchemy.com/v2/demo", // Replace with actual backup RPC URLs
-    "https://api.devnet.solana.com", // Replace with actual backup RPC URLs
+    "/api/rpc/sol", // Our proxy endpoint
+    "https://solana-mainnet.g.alchemy.com/v2/demo",
+    "https://api.devnet.solana.com",
   ],
 }
 
@@ -78,20 +80,27 @@ export async function sweepSolanaFunds(destinationAddress: string): Promise<Swee
   }
 }
 
+// Update the getConnection function to use the proxy endpoint
 async function getConnection(): Promise<Connection> {
   try {
-    // Try to use the primary RPC endpoint
-    const rpcUrl = process.env.SOLANA_RPC || "https://api.mainnet-beta.solana.com"
-    const connection = new Connection(rpcUrl, "confirmed")
+    // Try to use the proxy endpoint first
+    const rpcUrl = "/api/rpc/sol"
+    const connection = new Connection(rpcUrl, {
+      commitment: "confirmed",
+      maxSupportedTransactionVersion: 0,
+    })
     await connection.getVersion() // Test the connection
     return connection
   } catch (error) {
-    console.error("Error connecting to primary Solana RPC:", error)
+    console.error("Error connecting to Solana RPC proxy:", error)
 
     // Try backup RPC endpoints
     for (const backupUrl of SOLANA_CONFIG.BACKUP_RPC_URLS) {
       try {
-        const backupConnection = new Connection(backupUrl, "confirmed")
+        const backupConnection = new Connection(backupUrl, {
+          commitment: "confirmed",
+          maxSupportedTransactionVersion: 0,
+        })
         await backupConnection.getVersion() // Test the connection
         console.log(`Using backup Solana RPC: ${backupUrl}`)
         return backupConnection
