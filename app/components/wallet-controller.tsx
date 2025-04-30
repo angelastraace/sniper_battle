@@ -5,11 +5,21 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, Wallet, Copy, ExternalLink, AlertCircle, ArrowRightLeft, Pencil } from "lucide-react"
+import { Loader2, Wallet, Copy, ExternalLink, AlertCircle, ArrowRightLeft, Pencil, Clock } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 interface WalletControllerProps {
   chain: "ethereum" | "bsc" | "solana"
+}
+
+interface Transaction {
+  signature: string
+  timestamp: string | null
+  status: string
+  fee?: number
+  blockTime?: number
+  type?: string
+  amount?: number | null
 }
 
 export default function WalletController({ chain }: WalletControllerProps) {
@@ -17,6 +27,9 @@ export default function WalletController({ chain }: WalletControllerProps) {
   const [balance, setBalance] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [loadingTx, setLoadingTx] = useState(false)
+  const [txError, setTxError] = useState<string | null>(null)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -24,12 +37,15 @@ export default function WalletController({ chain }: WalletControllerProps) {
     setWalletAddress(null)
     setBalance(null)
     setError(null)
+    setTransactions([])
+    setTxError(null)
 
     // Load saved wallet address from localStorage
     const savedAddress = localStorage.getItem(`${chain}-wallet-address`)
     if (savedAddress) {
       setWalletAddress(savedAddress)
       fetchBalance(savedAddress)
+      fetchTransactions(savedAddress)
     }
   }, [chain])
 
@@ -95,6 +111,48 @@ export default function WalletController({ chain }: WalletControllerProps) {
     }
   }
 
+  const fetchTransactions = async (address: string) => {
+    setLoadingTx(true)
+    setTxError(null)
+
+    try {
+      let endpoint = ""
+
+      // Select the appropriate endpoint based on the chain
+      if (chain === "solana") {
+        endpoint = "/api/transactions/solana"
+      } else if (chain === "ethereum") {
+        endpoint = "/api/transactions/ethereum"
+      } else if (chain === "bsc") {
+        endpoint = "/api/transactions/bsc"
+      }
+
+      if (!endpoint) {
+        throw new Error("Unsupported chain for transaction fetching")
+      }
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ address }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch transactions: ${response.status}`)
+      }
+
+      const data = await response.json()
+      setTransactions(data.transactions || [])
+    } catch (err) {
+      console.error("Error fetching transactions:", err)
+      setTxError(err instanceof Error ? err.message : "Failed to fetch transactions")
+    } finally {
+      setLoadingTx(false)
+    }
+  }
+
   const connectWallet = async () => {
     setLoading(true)
     setError(null)
@@ -112,6 +170,7 @@ export default function WalletController({ chain }: WalletControllerProps) {
 
       setWalletAddress(address)
       await fetchBalance(address)
+      await fetchTransactions(address)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to connect wallet")
     } finally {
@@ -145,6 +204,7 @@ export default function WalletController({ chain }: WalletControllerProps) {
     localStorage.removeItem(`${chain}-wallet-address`)
     setWalletAddress(null)
     setBalance(null)
+    setTransactions([])
   }
 
   const copyAddress = () => {
@@ -170,6 +230,19 @@ export default function WalletController({ chain }: WalletControllerProps) {
     }
   }
 
+  const getTransactionExplorer = () => {
+    switch (chain) {
+      case "ethereum":
+        return "https://etherscan.io/tx/"
+      case "bsc":
+        return "https://bscscan.com/tx/"
+      case "solana":
+        return "https://solscan.io/tx/"
+      default:
+        return ""
+    }
+  }
+
   const getChainSymbol = () => {
     switch (chain) {
       case "ethereum":
@@ -181,6 +254,11 @@ export default function WalletController({ chain }: WalletControllerProps) {
       default:
         return ""
     }
+  }
+
+  const formatDate = (timestamp: string | null) => {
+    if (!timestamp) return "Unknown"
+    return new Date(timestamp).toLocaleString()
   }
 
   return (
@@ -223,6 +301,7 @@ export default function WalletController({ chain }: WalletControllerProps) {
                       localStorage.setItem(`${chain}-wallet-address`, newAddress)
                       setWalletAddress(newAddress)
                       fetchBalance(newAddress)
+                      fetchTransactions(newAddress)
                     }
                   }}
                 >
@@ -286,17 +365,82 @@ export default function WalletController({ chain }: WalletControllerProps) {
           <div className="text-center py-8 text-muted-foreground">No wallet connected</div>
         )}
       </CardContent>
-      <CardFooter>
+      <CardFooter className="flex flex-col gap-4">
         {walletAddress ? (
-          <div className="grid grid-cols-2 gap-2 w-full">
-            <Button variant="outline" size="sm" onClick={disconnectWallet}>
-              Disconnect
-            </Button>
-            <Button variant="default" size="sm">
-              <ArrowRightLeft className="mr-2 h-4 w-4" />
-              Transfer
-            </Button>
-          </div>
+          <>
+            <div className="grid grid-cols-2 gap-2 w-full">
+              <Button variant="outline" size="sm" onClick={disconnectWallet}>
+                Disconnect
+              </Button>
+              <Button variant="default" size="sm">
+                <ArrowRightLeft className="mr-2 h-4 w-4" />
+                Transfer
+              </Button>
+            </div>
+
+            <div className="w-full">
+              <h3 className="text-sm font-medium mb-2">Recent Transactions</h3>
+              {loadingTx ? (
+                <div className="flex justify-center items-center py-4">
+                  <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+                </div>
+              ) : txError ? (
+                <Alert variant="destructive" className="py-2">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription className="text-xs">{txError}</AlertDescription>
+                </Alert>
+              ) : transactions.length > 0 ? (
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {transactions.map((tx) => (
+                    <div key={tx.signature} className="p-2 bg-gray-800 rounded text-xs">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center">
+                          <Badge variant={tx.status === "success" ? "success" : "destructive"} className="mr-2">
+                            {tx.type || "Transaction"}
+                          </Badge>
+                          <span className="font-mono">{tx.signature.substring(0, 8)}...</span>
+                        </div>
+                        <Button variant="ghost" size="icon" asChild className="h-6 w-6">
+                          <a
+                            href={`${getTransactionExplorer()}${tx.signature}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        </Button>
+                      </div>
+                      <div className="flex justify-between mt-1 text-gray-400">
+                        <div className="flex items-center">
+                          <Clock className="h-3 w-3 mr-1" />
+                          {formatDate(tx.timestamp)}
+                        </div>
+                        {tx.amount !== null && (
+                          <span className={tx.amount && tx.amount > 0 ? "text-green-400" : "text-red-400"}>
+                            {tx.amount > 0 ? "+" : ""}
+                            {tx.amount} {getChainSymbol()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-4 text-muted-foreground text-sm">No recent transactions</div>
+              )}
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full mt-2"
+                onClick={() => fetchTransactions(walletAddress)}
+                disabled={loadingTx}
+              >
+                {loadingTx ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Refresh Transactions
+              </Button>
+            </div>
+          </>
         ) : (
           <Button variant="default" size="sm" onClick={connectWallet} className="w-full">
             Connect Wallet
