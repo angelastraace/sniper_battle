@@ -1,5 +1,5 @@
 import { ethers } from "ethers"
-import { Connection } from "@solana/web3.js"
+import { Connection, type ConnectionConfig } from "@solana/web3.js"
 import { config } from "./config"
 
 // Types for our blockchain data
@@ -125,10 +125,18 @@ class BlockchainApiService {
       }
     }
 
-    // Try to initialize Solana connection
+    // Try to initialize Solana connection with maxSupportedTransactionVersion
     for (const endpoint of this.solanaRpcEndpoints) {
       try {
-        const connection = new Connection(endpoint, "confirmed")
+        // Add maxSupportedTransactionVersion to the connection config
+        const connectionConfig: ConnectionConfig = {
+          commitment: "confirmed",
+          confirmTransactionInitialTimeout: 60000,
+          disableRetryOnRateLimit: false,
+          maxSupportedTransactionVersion: 0,
+        }
+
+        const connection = new Connection(endpoint, connectionConfig)
         await connection.getSlot()
         this.solanaConnection = connection
         this.connectionStatus.solana = true
@@ -201,7 +209,15 @@ class BlockchainApiService {
     if (!this.connectionStatus.solana || !this.solanaConnection) {
       for (const endpoint of this.solanaRpcEndpoints) {
         try {
-          const connection = new Connection(endpoint, "confirmed")
+          // Add maxSupportedTransactionVersion to the connection config
+          const connectionConfig: ConnectionConfig = {
+            commitment: "confirmed",
+            confirmTransactionInitialTimeout: 60000,
+            disableRetryOnRateLimit: false,
+            maxSupportedTransactionVersion: 0,
+          }
+
+          const connection = new Connection(endpoint, connectionConfig)
           await connection.getSlot()
           this.solanaConnection = connection
           this.connectionStatus.solana = true
@@ -376,7 +392,11 @@ class BlockchainApiService {
       for (let i = 0; i < 10; i++) {
         if (latestSlot - i >= 0) {
           try {
-            const block = await this.solanaConnection.getBlock(latestSlot - i)
+            // Add maxSupportedTransactionVersion to getBlock options
+            const block = await this.solanaConnection.getBlock(latestSlot - i, {
+              maxSupportedTransactionVersion: 0,
+            })
+
             if (block) {
               this.addSolanaBlock({
                 number: (latestSlot - i).toString(),
@@ -433,7 +453,11 @@ class BlockchainApiService {
           if (currentSlot > lastProcessedSlot) {
             // Process new blocks
             try {
-              const block = await this.solanaConnection.getBlock(currentSlot)
+              // Add maxSupportedTransactionVersion to getBlock options
+              const block = await this.solanaConnection.getBlock(currentSlot, {
+                maxSupportedTransactionVersion: 0,
+              })
+
               if (block) {
                 this.addSolanaBlock({
                   number: currentSlot.toString(),
