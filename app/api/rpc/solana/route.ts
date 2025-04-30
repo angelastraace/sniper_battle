@@ -2,13 +2,17 @@ import { type NextRequest, NextResponse } from "next/server"
 
 export async function POST(request: NextRequest) {
   try {
+    const rpcUrl = process.env.SOLANA_RPC
+
+    if (!rpcUrl) {
+      console.error("SOLANA_RPC environment variable not set")
+      return NextResponse.json({ error: "RPC endpoint not configured" }, { status: 500 })
+    }
+
     const body = await request.json()
+    console.log(`Solana RPC request: ${body.method}`)
 
-    // Get the Solana RPC URL from environment variables
-    const SOLANA_RPC = process.env.NEXT_PUBLIC_SOLANA_RPC || "https://api.mainnet-beta.solana.com"
-
-    // Forward the request to the RPC endpoint
-    const response = await fetch(SOLANA_RPC, {
+    const response = await fetch(rpcUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -16,16 +20,15 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(body),
     })
 
-    // Get the response data
+    if (!response.ok) {
+      console.error(`Solana RPC error: ${response.status} ${response.statusText}`)
+      return NextResponse.json({ error: "RPC request failed" }, { status: response.status })
+    }
+
     const data = await response.json()
-
-    // Log the request (optional)
-    console.log(`🔄 Proxied SOL RPC: ${body.method}`)
-
-    // Return the response
     return NextResponse.json(data)
   } catch (error) {
-    console.error("SOL RPC Proxy Error:", error)
-    return NextResponse.json({ error: "RPC request failed" }, { status: 500 })
+    console.error("Solana RPC proxy error:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

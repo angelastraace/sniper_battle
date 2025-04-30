@@ -2,13 +2,17 @@ import { type NextRequest, NextResponse } from "next/server"
 
 export async function POST(request: NextRequest) {
   try {
+    const rpcUrl = process.env.BSC_RPC
+
+    if (!rpcUrl) {
+      console.error("BSC_RPC environment variable not set")
+      return NextResponse.json({ error: "RPC endpoint not configured" }, { status: 500 })
+    }
+
     const body = await request.json()
+    console.log(`BSC RPC request: ${body.method}`)
 
-    // Get the BSC RPC URL from environment variables
-    const BSC_RPC = process.env.BSC_RPC || "https://bsc-dataseed.binance.org/"
-
-    // Forward the request to the RPC endpoint
-    const response = await fetch(BSC_RPC, {
+    const response = await fetch(rpcUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -16,16 +20,15 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(body),
     })
 
-    // Get the response data
+    if (!response.ok) {
+      console.error(`BSC RPC error: ${response.status} ${response.statusText}`)
+      return NextResponse.json({ error: "RPC request failed" }, { status: response.status })
+    }
+
     const data = await response.json()
-
-    // Log the request (optional)
-    console.log(`🔄 Proxied BSC RPC: ${body.method}`)
-
-    // Return the response
     return NextResponse.json(data)
   } catch (error) {
-    console.error("BSC RPC Proxy Error:", error)
-    return NextResponse.json({ error: "RPC request failed" }, { status: 500 })
+    console.error("BSC RPC proxy error:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
