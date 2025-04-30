@@ -61,6 +61,8 @@
     "@emotion/is-prop-valid": "latest",
     "immer": "latest",
     "use-sync-external-store": "latest",
+    "bufferutil": "latest",
+    "utf-8-validate": "latest",
     "framer-motion": "latest",
     "@supabase/supabase-js": "latest",
     "ethers": "latest",
@@ -68,7 +70,8 @@
     "@solana/web3.js": "latest",
     "crypto": "latest",
     "bs58": "latest",
-    "zustand": "latest"
+    "zustand": "latest",
+    "ws": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",

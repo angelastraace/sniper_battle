@@ -409,6 +409,28 @@ class BlockchainApiService {
                 slot: latestSlot - i,
               })
 
+              // Add SPL Token Mint detection
+              for (const tx of block.transactions) {
+                for (const ix of tx.transaction.message.instructions) {
+                  // Try to decode the instruction
+                  try {
+                    const programId = ix.programId.toBase58()
+
+                    // Detect SPL Token Mint
+                    if (programId === "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA") {
+                      const data = Buffer.from(ix.data, "base64").toString("hex")
+                      const mintInstruction = data.slice(0, 2)
+
+                      if (mintInstruction === "00") {
+                        console.log(`🎯 SPL Token Mint Detected in Slot ${latestSlot - i}`)
+                      }
+                    }
+                  } catch (err) {
+                    // Silently skip parsing failures
+                  }
+                }
+              }
+
               // Add some transactions
               if (block.transactions.length > 0) {
                 const txCount = Math.min(5, block.transactions.length)
@@ -470,6 +492,28 @@ class BlockchainApiService {
                   transactions: block.transactions.length,
                   slot: currentSlot,
                 })
+
+                // Add SPL Token Mint detection
+                for (const tx of block.transactions) {
+                  for (const ix of tx.transaction.message.instructions) {
+                    // Try to decode the instruction
+                    try {
+                      const programId = ix.programId.toBase58()
+
+                      // Detect SPL Token Mint
+                      if (programId === "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA") {
+                        const data = Buffer.from(ix.data, "base64").toString("hex")
+                        const mintInstruction = data.slice(0, 2)
+
+                        if (mintInstruction === "00") {
+                          console.log(`🎯 SPL Token Mint Detected in Slot ${currentSlot}`)
+                        }
+                      }
+                    } catch (err) {
+                      // Silently skip parsing failures
+                    }
+                  }
+                }
 
                 // Add some transactions
                 if (block.transactions.length > 0) {
@@ -876,6 +920,11 @@ class BlockchainApiService {
 
   public getSolanaTokenInfo(): TokenInfo | null {
     return this.solTokenInfo
+  }
+
+  // Add this method to the BlockchainApiService class
+  public getSolanaConnection(): Connection | null {
+    return this.solanaConnection
   }
 
   // Clean up resources
