@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, Wallet, Copy, ExternalLink, AlertCircle, ArrowRightLeft } from "lucide-react"
+import { Loader2, Wallet, Copy, ExternalLink, AlertCircle, ArrowRightLeft, Pencil } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 interface WalletControllerProps {
@@ -64,9 +64,6 @@ export default function WalletController({ chain }: WalletControllerProps) {
     setError(null)
 
     try {
-      // This is a simplified example - in a real app, you'd use a wallet provider
-      // like ethers.js, web3.js, or a wallet adapter for Solana
-
       // For demo purposes, we'll just prompt for an address
       const address = prompt("Enter your wallet address")
 
@@ -84,6 +81,28 @@ export default function WalletController({ chain }: WalletControllerProps) {
     } finally {
       setLoading(false)
     }
+  }
+
+  const savePrivateKey = () => {
+    const privateKey = prompt("Enter your private key (stored locally only)")
+
+    if (privateKey) {
+      localStorage.setItem(`${chain}-private-key`, privateKey)
+      toast({
+        title: "Private key saved",
+        description: "Your private key has been saved locally",
+      })
+    }
+  }
+
+  const hasPrivateKey = () => {
+    return !!localStorage.getItem(`${chain}-private-key`)
+  }
+
+  const getMaskedPrivateKey = () => {
+    const key = localStorage.getItem(`${chain}-private-key`)
+    if (!key) return null
+    return key.substring(0, 6) + "..." + key.substring(key.length - 4)
   }
 
   const disconnectWallet = () => {
@@ -159,10 +178,68 @@ export default function WalletController({ chain }: WalletControllerProps) {
                     <ExternalLink className="h-4 w-4" />
                   </a>
                 </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    const newAddress = prompt("Edit wallet address", walletAddress)
+                    if (newAddress && newAddress !== walletAddress) {
+                      localStorage.setItem(`${chain}-wallet-address`, newAddress)
+                      setWalletAddress(newAddress)
+                      fetchBalance(newAddress)
+                    }
+                  }}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
               </div>
             </div>
 
             <div className="p-2 bg-gray-800 rounded text-xs font-mono break-all">{walletAddress}</div>
+
+            <div className="flex justify-between items-center mt-4">
+              <span className="text-sm font-medium">Private Key</span>
+              <div className="flex items-center space-x-1">
+                {hasPrivateKey() && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      const key = localStorage.getItem(`${chain}-private-key`)
+                      if (key) {
+                        navigator.clipboard.writeText(key)
+                        toast({
+                          title: "Private key copied",
+                          description: "Private key copied to clipboard",
+                        })
+                      }
+                    }}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    const newKey = prompt("Enter private key", localStorage.getItem(`${chain}-private-key`) || "")
+                    if (newKey) {
+                      localStorage.setItem(`${chain}-private-key`, newKey)
+                      toast({
+                        title: "Private key updated",
+                        description: "Your private key has been updated",
+                      })
+                    }
+                  }}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            <div className="p-2 bg-gray-800 rounded text-xs font-mono break-all">
+              {hasPrivateKey() ? getMaskedPrivateKey() : "No private key configured"}
+            </div>
 
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">Balance</span>
