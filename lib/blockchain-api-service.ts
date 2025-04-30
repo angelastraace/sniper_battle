@@ -73,24 +73,25 @@ class BlockchainApiService {
     bsc: false,
   }
 
-  // Fallback RPC endpoints
+  // Proxy RPC endpoints
   private ethereumRpcEndpoints = [
+    "/api/rpc/ethereum", // Primary: Our proxied endpoint
     process.env.ETHEREUM_RPC || config.rpcEndpoints.ethereum,
     process.env.NEXT_PUBLIC_ALCHEMY_RPC,
     "https://rpc.ankr.com/eth",
     "https://ethereum.publicnode.com",
-    "https://eth.llamarpc.com",
   ]
 
   private solanaRpcEndpoints = [
+    "/api/rpc/solana", // Primary: Our proxied endpoint
     process.env.SOLANA_RPC || config.rpcEndpoints.solana,
     "https://api.mainnet-beta.solana.com",
     "https://solana-api.projectserum.com",
     "https://rpc.ankr.com/solana",
-    "https://solana-mainnet.rpc.extrnode.com",
   ]
 
   private bscRpcEndpoints = [
+    "/api/rpc/bsc", // Primary: Our proxied endpoint
     process.env.BSC_RPC || config.rpcEndpoints.bsc,
     "https://bsc-dataseed.binance.org/",
     "https://bsc-dataseed1.defibit.io/",
