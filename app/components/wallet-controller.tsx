@@ -38,12 +38,34 @@ export default function WalletController({ chain }: WalletControllerProps) {
     setError(null)
 
     try {
-      const response = await fetch(`/api/wallet/${chain}/balance`, {
+      // Get the appropriate RPC endpoint from config
+      const endpoint = chain === "ethereum" ? "/api/rpc/eth" : chain === "solana" ? "/api/rpc/sol" : "/api/rpc/bsc"
+
+      // Create the appropriate RPC payload based on the chain
+      let rpcPayload
+
+      if (chain === "ethereum" || chain === "bsc") {
+        rpcPayload = {
+          jsonrpc: "2.0",
+          id: 1,
+          method: "eth_getBalance",
+          params: [address, "latest"],
+        }
+      } else if (chain === "solana") {
+        rpcPayload = {
+          jsonrpc: "2.0",
+          id: 1,
+          method: "getBalance",
+          params: [address],
+        }
+      }
+
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ address }),
+        body: JSON.stringify(rpcPayload),
       })
 
       if (!response.ok) {
@@ -51,8 +73,22 @@ export default function WalletController({ chain }: WalletControllerProps) {
       }
 
       const data = await response.json()
-      setBalance(data.balance)
+
+      // Process the response based on the chain
+      let formattedBalance
+
+      if (chain === "ethereum" || chain === "bsc") {
+        // Convert hex result to decimal and format as ETH/BNB
+        const wei = Number.parseInt(data.result, 16)
+        formattedBalance = (wei / 1e18).toFixed(4)
+      } else if (chain === "solana") {
+        // Format SOL balance (lamports to SOL)
+        formattedBalance = (data.result.value / 1e9).toFixed(4)
+      }
+
+      setBalance(formattedBalance)
     } catch (err) {
+      console.error("Error fetching balance:", err)
       setError(err instanceof Error ? err.message : "Failed to fetch balance")
     } finally {
       setLoading(false)

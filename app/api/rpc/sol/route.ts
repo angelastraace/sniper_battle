@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server"
 
 export async function POST(request: Request) {
-  const BSC_RPC = process.env.BSC_RPC || "https://bsc-dataseed.binance.org/"
+  const SOLANA_RPC = process.env.SOLANA_RPC || "https://api.mainnet-beta.solana.com"
 
   try {
     const body = await request.json()
 
-    const response = await fetch(BSC_RPC, {
+    const response = await fetch(SOLANA_RPC, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

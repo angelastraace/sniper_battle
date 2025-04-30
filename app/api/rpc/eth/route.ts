@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server"
 
 export async function POST(request: Request) {
-  const BSC_RPC = process.env.BSC_RPC || "https://bsc-dataseed.binance.org/"
+  const ALCHEMY_API_KEY = process.env.NEXT_PUBLIC_ALCHEMY_RPC?.split("/").pop() || process.env.ALCHEMY_API_KEY || "demo" // Fallback, should be replaced with actual key
 
   try {
     const body = await request.json()
 
-    const response = await fetch(BSC_RPC, {
+    const response = await fetch(`https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

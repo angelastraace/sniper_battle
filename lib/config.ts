@@ -2,9 +2,9 @@
 export const config = {
   // RPC endpoints
   rpcEndpoints: {
-    ethereum: process.env.ETHEREUM_RPC || "https://eth-mainnet.g.alchemy.com/v2/demo",
-    solana: process.env.SOLANA_RPC || "https://api.mainnet-beta.solana.com",
-    bsc: process.env.BSC_RPC || "https://bsc-dataseed.binance.org/",
+    ethereum: "/api/rpc/eth", // Use our proxy endpoint
+    solana: "/api/rpc/sol", // Use our proxy endpoint
+    bsc: "/api/rpc/bsc", // Use our proxy endpoint
   },
 
   // Destination wallets for sweeping funds
