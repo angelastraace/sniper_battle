@@ -1,5 +1,4 @@
 import { Connection, type ConnectionConfig } from "@solana/web3.js"
-import { SOLANA_CONFIG } from "../../config/solana"
 
 // Track failed RPC endpoints and their last failure time
 const failedEndpoints = new Map<string, number>()
@@ -8,41 +7,47 @@ const RETRY_TIMEOUT = 60000 // 1 minute timeout before retrying a failed endpoin
 // Get a connection with fallback support
 export function getConnectionWithFallback(config?: ConnectionConfig): Connection {
   // Use the primary RPC URL from environment variable or our proxy endpoint
-  const primaryRpcUrl = "/api/rpc/sol"
+  const primaryRpcUrl = process.env.SOLANA_PROXY_URL || "/api/rpc/solana"
 
   // Define reliable mainnet backup endpoints
   const backupRpcUrls = [
-    "/api/rpc/sol", // Our proxy endpoint
-    process.env.SOLANA_RPC || SOLANA_CONFIG.RPC_URL,
-    "https://api.mainnet-beta.solana.com",
-    "https://solana-api.projectserum.com",
-    "https://rpc.ankr.com/solana",
-    "https://solana-mainnet.rpc.extrnode.com",
-    "https://ssc-dao.genesysgo.net",
-    ...SOLANA_CONFIG.BACKUP_RPC_URLS.filter((url) => url.includes("mainnet") || url.includes("solana")),
+    "/api/rpc/solana", // Our proxy endpoint
+    process.env.SOLANA_PROXY_URL || "/api/rpc/solana", // Env variable or fallback
   ]
 
   // Try each backup endpoint first to avoid the access forbidden error with the primary
   for (const backupUrl of backupRpcUrls) {
     if (!isEndpointFailed(backupUrl)) {
-      return new Connection(backupUrl, config)
+      return new Connection(backupUrl, {
+        ...config,
+        maxSupportedTransactionVersion: 0,
+      })
     }
   }
 
   // If all backups failed, try the primary if it hasn't failed
   if (!isEndpointFailed(primaryRpcUrl)) {
-    return new Connection(primaryRpcUrl, config)
+    return new Connection(primaryRpcUrl, {
+      ...config,
+      maxSupportedTransactionVersion: 0,
+    })
   }
 
   // If all endpoints have failed, reset the oldest failed endpoint and try again
   const oldestFailedEndpoint = getOldestFailedEndpoint()
   if (oldestFailedEndpoint) {
     failedEndpoints.delete(oldestFailedEndpoint)
-    return new Connection(oldestFailedEndpoint, config)
+    return new Connection(oldestFailedEndpoint, {
+      ...config,
+      maxSupportedTransactionVersion: 0,
+    })
   }
 
   // If we somehow have no endpoints at all, use the primary as a last resort
-  return new Connection(primaryRpcUrl, config)
+  return new Connection(primaryRpcUrl, {
+    ...config,
+    maxSupportedTransactionVersion: 0,
+  })
 }
 
 // Check if an endpoint is currently marked as failed

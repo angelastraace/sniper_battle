@@ -1,12 +1,9 @@
 export const SOLANA_CONFIG = {
   // RPC endpoints - ensure they have proper protocols
-  RPC_URL: typeof window !== "undefined" ? `${window.location.origin}/api/rpc/sol` : "/api/rpc/sol",
+  RPC_URL: typeof window !== "undefined" ? `${window.location.origin}/api/rpc/solana` : "/api/rpc/solana",
   BACKUP_RPC_URLS: [
-    typeof window !== "undefined" ? `${window.location.origin}/api/rpc/sol` : "/api/rpc/sol",
-    process.env.SOLANA_RPC || "https://api.mainnet-beta.solana.com",
-    "https://solana-api.projectserum.com",
-    "https://rpc.ankr.com/solana",
-    "https://solana-mainnet.rpc.extrnode.com",
+    typeof window !== "undefined" ? `${window.location.origin}/api/rpc/solana` : "/api/rpc/solana",
+    process.env.SOLANA_PROXY_URL || "/api/rpc/solana",
   ],
 
   // Block explorer

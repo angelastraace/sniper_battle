@@ -13,9 +13,8 @@ export interface SweepResult {
 // Update the SOLANA_CONFIG object to include our proxy endpoint
 const SOLANA_CONFIG = {
   BACKUP_RPC_URLS: [
-    "/api/rpc/sol", // Our proxy endpoint
-    "https://solana-mainnet.g.alchemy.com/v2/demo",
-    "https://api.devnet.solana.com",
+    "/api/rpc/solana", // Our proxy endpoint
+    process.env.SOLANA_PROXY_URL || "/api/rpc/solana", // Env variable or fallback
   ],
 }
 
@@ -34,8 +33,7 @@ export async function sweepSolanaFunds(destinationAddress: string): Promise<Swee
     // Create keypair from private key
     const keypair = Keypair.fromSecretKey(privateKeyBytes)
 
-    // Connect to Solana network
-    // const connection = new Connection(process.env.SOLANA_RPC || "https://api.mainnet-beta.solana.com", "confirmed")
+    // Connect to Solana network using our proxy
     const connection = await getConnection()
 
     // Get balance
@@ -84,7 +82,7 @@ export async function sweepSolanaFunds(destinationAddress: string): Promise<Swee
 async function getConnection(): Promise<Connection> {
   try {
     // Try to use the proxy endpoint first
-    const rpcUrl = "/api/rpc/sol"
+    const rpcUrl = process.env.SOLANA_PROXY_URL || "/api/rpc/solana"
     const connection = new Connection(rpcUrl, {
       commitment: "confirmed",
       maxSupportedTransactionVersion: 0,
