@@ -1,9 +1,11 @@
+import { SOLANA_PROXY_URL } from "@/lib/solanaClient"
+
 export const SOLANA_CONFIG = {
-  // RPC endpoints - using the Pages Router API endpoint
-  RPC_URL: typeof window !== "undefined" ? `${window.location.origin}/api/solana` : "/api/solana",
+  // RPC endpoints - using the environment variable
+  RPC_URL: SOLANA_PROXY_URL,
   BACKUP_RPC_URLS: [
-    typeof window !== "undefined" ? `${window.location.origin}/api/solana` : "/api/solana",
-    process.env.SOLANA_PROXY_URL || "/api/rpc/solana",
+    SOLANA_PROXY_URL,
+    "/api/rpc/solana", // Fallback to App Router endpoint
   ],
 
   // Block explorer

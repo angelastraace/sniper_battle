@@ -5,8 +5,19 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, Wallet, Copy, ExternalLink, AlertCircle, ArrowRightLeft, Pencil, Clock } from "lucide-react"
+import {
+  Loader2,
+  Wallet,
+  Copy,
+  ExternalLink,
+  AlertCircle,
+  ArrowRightLeft,
+  Pencil,
+  Clock,
+  RefreshCw,
+} from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { getSolanaBalance, getSolanaTransactions } from "@/lib/solanaClient"
 
 interface WalletControllerProps {
   chain: "ethereum" | "bsc" | "solana"
@@ -54,64 +65,44 @@ export default function WalletController({ chain }: WalletControllerProps) {
     setError(null)
 
     try {
-      // Get the appropriate RPC endpoint based on the chain
-      const endpoint = chain === "ethereum" ? "/api/rpc/eth" : chain === "solana" ? "/api/solana" : "/api/rpc/bsc"
+      let formattedBalance: string
 
-      // Create the appropriate RPC payload based on the chain
-      let rpcPayload
+      if (chain === "solana") {
+        // Use our new Solana client for Solana
+        const solBalance = await getSolanaBalance(address)
+        formattedBalance = solBalance.toFixed(4)
+      } else {
+        // Get the appropriate RPC endpoint based on the chain
+        const endpoint = chain === "ethereum" ? "/api/rpc/eth" : "/api/rpc/bsc"
 
-      if (chain === "ethereum" || chain === "bsc") {
-        rpcPayload = {
+        // Create the appropriate RPC payload
+        const rpcPayload = {
           jsonrpc: "2.0",
           id: 1,
           method: "eth_getBalance",
           params: [address, "latest"],
         }
-      } else if (chain === "solana") {
-        rpcPayload = {
-          jsonrpc: "2.0",
-          id: 1,
-          method: "getBalance",
-          params: [address],
+
+        // Make sure we have the full URL with origin for client-side requests
+        const fullUrl = typeof window !== "undefined" ? `${window.location.origin}${endpoint}` : endpoint
+
+        const response = await fetch(fullUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(rpcPayload),
+        })
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch balance: ${response.status}`)
         }
-      }
 
-      console.log(`Fetching ${chain} balance for ${address} from ${endpoint}`)
+        const data = await response.json()
 
-      // Make sure we have the full URL with origin for client-side requests
-      const fullUrl = typeof window !== "undefined" ? `${window.location.origin}${endpoint}` : endpoint
-
-      const response = await fetch(fullUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(rpcPayload),
-        cache: "no-store",
-      })
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch balance: ${response.status}`)
-      }
-
-      const data = await response.json()
-      console.log(`${chain} balance response:`, data)
-
-      // Process the response based on the chain
-      let formattedBalance
-
-      if (chain === "ethereum" || chain === "bsc") {
         // Convert hex result to decimal and format as ETH/BNB
         const wei = Number.parseInt(data.result, 16)
         formattedBalance = (wei / 1e18).toFixed(4)
-      } else if (chain === "solana") {
-        // Format SOL balance (lamports to SOL)
-        if (data.result && typeof data.result.value === "number") {
-          formattedBalance = (data.result.value / 1e9).toFixed(4)
-        } else {
-          console.error("Invalid Solana balance response:", data)
-          throw new Error("Invalid Solana balance format")
-        }
       }
 
       setBalance(formattedBalance)
@@ -130,47 +121,53 @@ export default function WalletController({ chain }: WalletControllerProps) {
     setTxError(null)
 
     try {
-      let endpoint = ""
-
-      // Select the appropriate endpoint based on the chain
       if (chain === "solana") {
-        endpoint = "/api/transactions/solana"
-      } else if (chain === "ethereum") {
-        endpoint = "/api/transactions/ethereum"
-      } else if (chain === "bsc") {
-        endpoint = "/api/transactions/bsc"
-      }
+        // Use our new Solana client for Solana transactions
+        const solTransactions = await getSolanaTransactions(address)
 
-      if (!endpoint) {
-        throw new Error("Unsupported chain for transaction fetching")
-      }
+        // Format the transactions
+        const formattedTx = solTransactions.map((tx) => ({
+          signature: tx.signature,
+          timestamp: tx.blockTime ? new Date(tx.blockTime * 1000).toISOString() : null,
+          status: tx.err ? "failed" : "success",
+          blockTime: tx.blockTime,
+          type: "Transaction",
+          amount: null, // We'd need to parse the transaction to get the amount
+        }))
 
-      console.log(`Fetching ${chain} transactions for ${address} from ${endpoint}`)
-
-      // Make sure we have the full URL with origin for client-side requests
-      const fullUrl = typeof window !== "undefined" ? `${window.location.origin}${endpoint}` : endpoint
-
-      const response = await fetch(fullUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ address }),
-        cache: "no-store",
-      })
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch transactions: ${response.status}`)
-      }
-
-      const data = await response.json()
-      console.log(`${chain} transactions response:`, data)
-
-      if (Array.isArray(data.transactions)) {
-        setTransactions(data.transactions)
+        setTransactions(formattedTx)
       } else {
-        console.error("Invalid transaction response format:", data)
-        setTransactions([])
+        // For Ethereum and BSC, use the existing API
+        let endpoint = ""
+
+        // Select the appropriate endpoint based on the chain
+        if (chain === "ethereum") {
+          endpoint = "/api/transactions/ethereum"
+        } else if (chain === "bsc") {
+          endpoint = "/api/transactions/bsc"
+        }
+
+        if (!endpoint) {
+          throw new Error("Unsupported chain for transaction fetching")
+        }
+
+        // Make sure we have the full URL with origin for client-side requests
+        const fullUrl = typeof window !== "undefined" ? `${window.location.origin}${endpoint}` : endpoint
+
+        const response = await fetch(fullUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ address }),
+        })
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch transactions: ${response.status}`)
+        }
+
+        const data = await response.json()
+        setTransactions(data.transactions || [])
       }
     } catch (err) {
       console.error(`Error fetching ${chain} transactions:`, err)
@@ -390,7 +387,18 @@ export default function WalletController({ chain }: WalletControllerProps) {
 
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">Balance</span>
-              <Badge variant="outline">{balance ? `${balance} ${getChainSymbol()}` : "Loading..."}</Badge>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => fetchBalance(walletAddress)}
+                  disabled={loading}
+                  className="h-6 w-6"
+                >
+                  <RefreshCw className="h-3 w-3" />
+                </Button>
+                <Badge variant="outline">{balance ? `${balance} ${getChainSymbol()}` : "Loading..."}</Badge>
+              </div>
             </div>
           </div>
         ) : (
