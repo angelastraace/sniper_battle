@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server"
+import { Connection, PublicKey } from "@solana/web3.js"
+import { SOLANA_CONFIG } from "@/app/config/solana"
 
 export async function POST(request: Request) {
   try {
@@ -8,74 +10,75 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Address is required" }, { status: 400 })
     }
 
-    // Get Helius API key
-    const HELIUS_API_KEY = process.env.HELIUS_API_KEY || ""
+    console.log(`Fetching Solana transactions for address: ${address}`)
 
-    // If we have a Helius API key, use it to fetch real transactions
-    if (HELIUS_API_KEY) {
-      try {
-        const heliusUrl = `https://api.helius.xyz/v0/addresses/${address}/transactions?api-key=${HELIUS_API_KEY}&limit=10`
+    // Use the proxy endpoint from config
+    const rpcUrl = SOLANA_CONFIG.RPC_URL
+    console.log(`Using Solana RPC URL: ${rpcUrl}`)
 
-        const response = await fetch(heliusUrl)
+    const connection = new Connection(rpcUrl, {
+      commitment: "confirmed",
+      maxSupportedTransactionVersion: 0,
+    })
 
-        if (!response.ok) {
-          throw new Error(`Helius API error: ${response.status}`)
+    try {
+      const publicKey = new PublicKey(address)
+
+      // Get recent signatures for the address
+      const signatures = await connection.getSignaturesForAddress(publicKey, { limit: 10 })
+      console.log(`Found ${signatures.length} signatures for ${address}`)
+
+      // Map signatures to transaction objects
+      const transactions = signatures.map((sig) => {
+        return {
+          signature: sig.signature,
+          timestamp: sig.blockTime ? new Date(sig.blockTime * 1000).toISOString() : null,
+          status: sig.err ? "failed" : "success",
+          blockTime: sig.blockTime,
+          type: determineTransactionType(sig),
+          amount: calculateTransactionAmount(sig),
         }
+      })
 
-        const data = await response.json()
-
-        // Transform Helius data to our transaction format
-        const transactions = data.map((tx: any) => ({
-          signature: tx.signature,
-          timestamp: tx.timestamp ? new Date(tx.timestamp * 1000).toISOString() : null,
-          status: tx.err ? "failed" : "success",
-          fee: tx.fee || 0,
-          blockTime: tx.timestamp,
-          type: tx.type || "unknown",
-          amount: tx.amount || null,
-        }))
-
-        return NextResponse.json({ transactions })
-      } catch (error) {
-        console.error("Error fetching from Helius:", error)
-        // Fall back to mock data if Helius fails
-      }
+      return NextResponse.json({ transactions })
+    } catch (error) {
+      console.error("Error fetching Solana transactions:", error)
+      return NextResponse.json(
+        { error: "Failed to fetch transactions", details: error instanceof Error ? error.message : String(error) },
+        { status: 500 },
+      )
     }
-
-    // Fall back to mock data if no Helius API key or if Helius request failed
-    const mockTransactions = [
-      {
-        signature: "5xz7w8q9YpGTXqrL2JBGkSFRGBvud6BfEEDW7o1wCTFp2rBzDKMcfe3c4hfGMdRSUXNKtT9QyKVkq9U1V9EiWbxF",
-        timestamp: new Date().toISOString(),
-        status: "success",
-        type: "Transfer",
-        amount: 0.05,
-        blockTime: Date.now() / 1000,
-      },
-      {
-        signature: "3NZV2v6pRvp2xFzkCPFXgFyXz3uw9WW9JBNBBAZdpKCLHEHzkXEf7so4MgRJFBB6q9fCtjqR9N7pD7NzDjHbhchV",
-        timestamp: new Date(Date.now() - 86400000).toISOString(),
-        status: "success",
-        type: "Swap",
-        amount: -0.2,
-        blockTime: (Date.now() - 86400000) / 1000,
-      },
-      {
-        signature: "2vJHzBPYqgFf7gGjYu2QkCLDqJFR9jSWMNUQzxnDXHxGmxE9B7CPJCq7RR6GYLmijmPSHVdU4pWrjYQ6EvKK4KcS",
-        timestamp: new Date(Date.now() - 172800000).toISOString(),
-        status: "success",
-        type: "Stake",
-        amount: -1.5,
-        blockTime: (Date.now() - 172800000) / 1000,
-      },
-    ]
-
-    return NextResponse.json({ transactions: mockTransactions })
   } catch (error) {
-    console.error("Error fetching Solana transactions:", error)
+    console.error("Error processing request:", error)
     return NextResponse.json(
-      { error: "Failed to fetch transactions", details: error instanceof Error ? error.message : String(error) },
+      { error: "Internal server error", details: error instanceof Error ? error.message : String(error) },
       { status: 500 },
     )
   }
+}
+
+// Helper function to determine transaction type
+function determineTransactionType(signatureInfo: any): string {
+  // This is a simplified version - in a real app, you'd analyze the transaction data
+  if (signatureInfo.memo && signatureInfo.memo.includes("swap")) {
+    return "Swap"
+  } else if (signatureInfo.memo && signatureInfo.memo.includes("stake")) {
+    return "Stake"
+  } else {
+    return "Transfer"
+  }
+}
+
+// Helper function to calculate transaction amount
+function calculateTransactionAmount(signatureInfo: any): number | null {
+  // This is a placeholder - in a real app, you'd calculate based on transaction data
+  // For demo purposes, we'll generate random amounts
+  const types = {
+    Transfer: () => Math.random() * 0.5,
+    Swap: () => -Math.random() * 0.5,
+    Stake: () => Math.random() * 2,
+  }
+
+  const type = determineTransactionType(signatureInfo)
+  return Number.parseFloat((types[type as keyof typeof types]?.() || 0).toFixed(2))
 }

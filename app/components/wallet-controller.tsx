@@ -55,7 +55,7 @@ export default function WalletController({ chain }: WalletControllerProps) {
 
     try {
       // Get the appropriate RPC endpoint based on the chain
-      const endpoint = chain === "ethereum" ? "/api/rpc/eth" : chain === "solana" ? "/api/rpc/sol" : "/api/rpc/bsc"
+      const endpoint = chain === "ethereum" ? "/api/rpc/eth" : chain === "solana" ? "/api/solana" : "/api/rpc/bsc"
 
       // Create the appropriate RPC payload based on the chain
       let rpcPayload
@@ -76,6 +76,8 @@ export default function WalletController({ chain }: WalletControllerProps) {
         }
       }
 
+      console.log(`Fetching ${chain} balance for ${address} from ${endpoint}`)
+
       // Make sure we have the full URL with origin for client-side requests
       const fullUrl = typeof window !== "undefined" ? `${window.location.origin}${endpoint}` : endpoint
 
@@ -85,6 +87,7 @@ export default function WalletController({ chain }: WalletControllerProps) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(rpcPayload),
+        cache: "no-store",
       })
 
       if (!response.ok) {
@@ -92,6 +95,7 @@ export default function WalletController({ chain }: WalletControllerProps) {
       }
 
       const data = await response.json()
+      console.log(`${chain} balance response:`, data)
 
       // Process the response based on the chain
       let formattedBalance
@@ -102,12 +106,17 @@ export default function WalletController({ chain }: WalletControllerProps) {
         formattedBalance = (wei / 1e18).toFixed(4)
       } else if (chain === "solana") {
         // Format SOL balance (lamports to SOL)
-        formattedBalance = (data.result?.value / 1e9).toFixed(4)
+        if (data.result && typeof data.result.value === "number") {
+          formattedBalance = (data.result.value / 1e9).toFixed(4)
+        } else {
+          console.error("Invalid Solana balance response:", data)
+          throw new Error("Invalid Solana balance format")
+        }
       }
 
       setBalance(formattedBalance)
     } catch (err) {
-      console.error("Error fetching balance:", err)
+      console.error(`Error fetching ${chain} balance:`, err)
       setError(err instanceof Error ? err.message : "Failed to fetch balance")
     } finally {
       setLoading(false)
@@ -136,6 +145,8 @@ export default function WalletController({ chain }: WalletControllerProps) {
         throw new Error("Unsupported chain for transaction fetching")
       }
 
+      console.log(`Fetching ${chain} transactions for ${address} from ${endpoint}`)
+
       // Make sure we have the full URL with origin for client-side requests
       const fullUrl = typeof window !== "undefined" ? `${window.location.origin}${endpoint}` : endpoint
 
@@ -145,6 +156,7 @@ export default function WalletController({ chain }: WalletControllerProps) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ address }),
+        cache: "no-store",
       })
 
       if (!response.ok) {
@@ -152,9 +164,16 @@ export default function WalletController({ chain }: WalletControllerProps) {
       }
 
       const data = await response.json()
-      setTransactions(data.transactions || [])
+      console.log(`${chain} transactions response:`, data)
+
+      if (Array.isArray(data.transactions)) {
+        setTransactions(data.transactions)
+      } else {
+        console.error("Invalid transaction response format:", data)
+        setTransactions([])
+      }
     } catch (err) {
-      console.error("Error fetching transactions:", err)
+      console.error(`Error fetching ${chain} transactions:`, err)
       setTxError(err instanceof Error ? err.message : "Failed to fetch transactions")
     } finally {
       setLoadingTx(false)
