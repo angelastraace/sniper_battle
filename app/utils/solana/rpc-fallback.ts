@@ -6,13 +6,13 @@ const RETRY_TIMEOUT = 60000 // 1 minute timeout before retrying a failed endpoin
 
 // Get a connection with fallback support
 export function getConnectionWithFallback(config?: ConnectionConfig): Connection {
-  // Use the primary RPC URL from environment variable or our proxy endpoint
-  const primaryRpcUrl = process.env.SOLANA_PROXY_URL || "/api/rpc/solana"
+  // Use the primary RPC URL from environment variable or our Pages Router API endpoint
+  const primaryRpcUrl = process.env.SOLANA_PROXY_URL || "/api/solana"
 
   // Define reliable mainnet backup endpoints
   const backupRpcUrls = [
-    "/api/rpc/solana", // Our proxy endpoint
-    process.env.SOLANA_PROXY_URL || "/api/rpc/solana", // Env variable or fallback
+    "/api/solana", // Our Pages Router API endpoint
+    "/api/rpc/solana", // Our App Router proxy endpoint as fallback
   ]
 
   // Try each backup endpoint first to avoid the access forbidden error with the primary

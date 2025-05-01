@@ -5,10 +5,10 @@ import { LAMPORTS_PER_SOL } from "@solana/web3.js"
 // Your destination wallet address
 const DESTINATION_WALLET = process.env.DESTINATION_WALLET_SOL || "7DjhBezJEbjLeaqXmKENZmPbDAHiC1f11GMfTjPSAmLD"
 
-// Update RPC endpoints to use the proxy
+// Update RPC endpoints to use the Pages Router API endpoint
 const RPC_ENDPOINTS = [
-  "/api/rpc/solana", // Primary: Our proxied endpoint
-  process.env.SOLANA_PROXY_URL || "/api/rpc/solana", // Fallback to local proxy if env not set
+  "/api/solana", // Primary: Our Pages Router API endpoint
+  process.env.SOLANA_PROXY_URL || "/api/rpc/solana", // Fallback to App Router proxy if env not set
 ]
 
 // Get a connection with fallback support

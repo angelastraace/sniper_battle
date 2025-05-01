@@ -1,8 +1,8 @@
 export const SOLANA_CONFIG = {
-  // RPC endpoints - ensure they have proper protocols
-  RPC_URL: typeof window !== "undefined" ? `${window.location.origin}/api/rpc/solana` : "/api/rpc/solana",
+  // RPC endpoints - using the Pages Router API endpoint
+  RPC_URL: typeof window !== "undefined" ? `${window.location.origin}/api/solana` : "/api/solana",
   BACKUP_RPC_URLS: [
-    typeof window !== "undefined" ? `${window.location.origin}/api/rpc/solana` : "/api/rpc/solana",
+    typeof window !== "undefined" ? `${window.location.origin}/api/solana` : "/api/solana",
     process.env.SOLANA_PROXY_URL || "/api/rpc/solana",
   ],
 
